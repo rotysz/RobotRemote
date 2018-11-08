@@ -1,140 +1,126 @@
-/**
- * Provides access to basic micro:bit functionality.
- */
-//% weight=5 color=#0fbc11 icon="\uf113" block="Robot"
-namespace Robot {
+const CMD_EMPTY = "empty"
+const CMD_FWD = "do_przodu"
+const CMD_LEFT = "w_lewo"
+const CMD_RIGHT = "w_prawo"
+const CMD_STOP = "stop"
+const CMD_SETSPEED = "predkosc"
+const CMD_SETSPEEDL = "p_prawy"
+const CMD_SETSPEEDR = "p_lewy"
+const CMD_CHGMTRSPEED = "zmienszybk"
+const CMD_CHGGROUP = "grupa"
 
-    const CMD_EMPTY = "empty"
-    const CMD_FWD = "do_przodu"
-    const CMD_LEFT = "w_lewo"
-    const CMD_RIGHT = "w_prawo"
-    const CMD_STOP = "stop"
-    const CMD_SETSPEED = "predkosc"
-    const CMD_SETSPEEDL = "p_prawy"
-    const CMD_SETSPEEDR = "p_lewy"
-    const CMD_CHGMTRSPEED = "zmienszybk"
-    const CMD_CHGGROUP = "grupa"
+const ON = true
+const OFF = false
 
-    const MSG_DIST = "odleglosc"
-    const MSG_LINESENSORS = "czlini"
+const MSG_DIST = "odleglosc"
+const MSG_LINESENSORS = "czlini"
 
-    let Distance = 0;
-    let LineSensors = 0;
+const INIT_GROUP = 1
+
+let SpeedLeft: number = 0
+let SpeedRight: number = 0
+let LastCmd: string = CMD_EMPTY
+let LastCmdTime: number = input.runningTime()
+let MotorOffTime: number = 0
+let RGrpEndTime: number = 0
+
+radio.setGroup(INIT_GROUP)
 
 
-    /**
-    * Uruchomienie silników na zadany czas
-    * @param CzasTrwania  [0-60000] czas trwania w milisekundach 
-    */
-    //% block
-    //% weight = 100
-    //% CzasTrwania.min=0 CzasTrwania.max=60000
-    export function DoPrzodu(CzasTrwania: number) {
-        radio.sendValue(CMD_FWD, CzasTrwania)
+
+function CmdForward(On: boolean, Duration: number, SpeedL: number, SpeedR: number) {
+    if (On) {
+        LastCmd = CMD_FWD
+        LastCmdTime = input.runningTime()
+        MotorOffTime = LastCmdTime + Duration
+        RobotImp.MotorLeft(SpeedL)
+        RobotImp.MotorRight(SpeedR)
+
+    } else {
+        RobotImp.MotorLeft(SpeedL)
+        RobotImp.MotorRight(SpeedR)
+        MotorOffTime = 0
     }
+}
 
-    /**
-    * Jazda w lewo przez zadany czas
-    * @param CzasTrwania  [0-60000] czas trwania w milisekundach 
-    */
-    //% block
-    //% CzasTrwania.min=0 CzasTrwania.max=60000
-    export function WLewo(CzasTrwania: number) {
-        radio.sendValue(CMD_LEFT, CzasTrwania)
+function CmdLeft(Duriation: number) {
+    CmdForward(ON, Duriation, -SpeedLeft, SpeedRight)
+    LastCmd = CMD_LEFT
+}
+
+function CmdRight(Duriation: number) {
+    CmdForward(ON, Duriation, SpeedLeft, -SpeedRight)
+    LastCmd = CMD_RIGHT
+}
+
+function CmdStop() {
+    CmdForward(OFF, 0, 0, 0)
+    LastCmd = CMD_STOP
+}
+
+function CmdSetSpeed(SpeedVal: number) {
+    SpeedLeft = SpeedVal
+    SpeedRight = SpeedVal
+}
+
+function CmdSetSpeedL(SpeedVal: number) {
+    SpeedLeft = SpeedVal
+}
+
+function CmdSetSpeedR(SpeedVal: number) {
+    SpeedRight = SpeedVal
+}
+
+function CmdChangeMotorSpeed(EncodedValue: number) {
+
+    let TmpSpeedL = ((EncodedValue / 512) - ((EncodedValue / 512) % 1)) - 256
+    let TmpSpeedR = EncodedValue % 512 - 256
+    if (MotorOffTime != 0) {
+        RobotImp.MotorLeft(TmpSpeedL)
+        RobotImp.MotorRight(TmpSpeedR)
     }
+    SpeedLeft = TmpSpeedL
+    SpeedRight = TmpSpeedR
+}
 
-    /**
-    * Jazda w prawo przez zadany czas
-    * @param CzasTrwania  [0-60000] czas trwania w milisekundach 
-    */
-    //% block
-    //% CzasTrwania.min=0 CzasTrwania.max=60000
-    export function WPrawo(CzasTrwania: number) {
-        radio.sendValue(CMD_RIGHT, CzasTrwania)
+function CmdChangeRadioGroup(On: boolean, NewRadioGroup: number) {
+    if (On) {
+        RGrpEndTime = input.runningTime() + 60000
+        radio.setGroup(NewRadioGroup)
+    } else {
+        RGrpEndTime = 0
+        radio.setGroup(INIT_GROUP)
     }
-
-    /**
-    * Ustawienie predkosci na zadana predkosc bez uruchomienia silnikow
-    * @param Predkosc [-255-255] predkosc wartosci dodatnie w przod ujemne w tyl 
-    */
-    //% block
-    //% weight = 100
-    //% Predkosc.min=-255 Predkosc.max=255
-    export function Predkosc(Predkosc: number) {
-        radio.sendValue(CMD_SETSPEED, Predkosc)
-    }
-
-    /**
-    * Ustawienie predkosci na zadana predkosc bez uruchomienia silnikow
-    * @param Predkosc  [-255-255] predkosc wartosci dodatnie w przod ujemne w tyl 
-    */
-    //% block
-    //% Predkosc.min=-255 Predkosc.max=255
-    export function PredkoscPrawy(Predkosc: number) {
-        radio.sendValue(CMD_SETSPEEDR, Predkosc)
-    }
-
-    /**
-    * Ustawienie predkosci na zadana predkosc bez uruchomienia silnikow
-    * @param Predkosc  [-255-255] predkosc wartosci dodatnie w przod ujemne w tyl 
-    */
-    //% block
-    //% Predkosc.min=-255 Predkosc.max=255
-    export function PredkoscLewy(Predkosc: number) {
-        radio.sendValue(CMD_SETSPEEDL, Predkosc)
-    }
-
-    /**
-    * Zmiana predkosci na zadana predkosc w czasie ruchu 
-    * @param PredkoscLewy [-255-255] predkosc wartosci dodatnie w przod ujemne w tyl 
-    * @param PredkoscPrawy [-255-255] predkosc wartosci dodatnie w przod ujemne w tyl
-    */
-    //% block
-    //% PredkoscLewy.min=-255 PredkoscLewy.max=255
-    //% PredkoscPrawy.min=-255 PredkoscPrawy.max=255
-    export function ZmienPredkosc(PredkoscLewy: number, PredkoscPrawy: number) {
-        let EncodedValue: number = (PredkoscLewy + 256) * 512 + (PredkoscPrawy + 256)
-        radio.sendValue(CMD_CHGMTRSPEED, EncodedValue)
-    }
-
-    /**
-    * Zmiana Grupy radiowej na nowa na 60 sekund
-    * @param NowaGrupa  [0-255] Nowa grupa radiowa 
-    */
-    //% block
-    //% NowaGrupa.min=0 NowaGrupa.max=255
-    export function ZmianaRadioGroup(NowaGrupa: number) {
-        radio.sendValue(CMD_CHGGROUP, NowaGrupa)
-    }
-
-    //% block
-    export function Stop() {
-        radio.sendValue(CMD_STOP, 0)
-    }
-
-    /**
-    * Odczyt odleglosci z czujnika ultradzwiekowego w cm  
-    */
-    //% block
-    //% weight = 10
-    export function Odleglosc(): number {
-        return Distance
-    }
-
-    /**
-   * Odczyt stanu czujnikow lini wartosci 0,1,10,11  
-   */
-    //% block 
-    //% weight = 10
-    export function CzujnikiLini(): number {
-        return LineSensors
-    }
-
-    radio.onReceivedValue(function (msg: string, value: number) {
-        if (msg == MSG_DIST) Distance = value
-        if (msg == MSG_LINESENSORS) LineSensors = value
-    })
-
 }
 
 
+
+radio.onReceivedValue(function (Cmd: string, CmdValue: number) {
+    if (Cmd == CMD_SETSPEED) CmdSetSpeed(CmdValue)
+    if (Cmd == CMD_SETSPEEDL) CmdSetSpeedL(CmdValue)
+    if (Cmd == CMD_SETSPEEDR) CmdSetSpeedR(CmdValue)
+    if (Cmd == CMD_FWD) CmdForward(ON, CmdValue, SpeedLeft, SpeedRight)
+    if (Cmd == CMD_LEFT) CmdLeft(CmdValue)
+    if (Cmd == CMD_RIGHT) CmdRight(CmdValue)
+    if (Cmd == CMD_CHGMTRSPEED) CmdChangeMotorSpeed(CmdValue)
+    if (Cmd == CMD_STOP) CmdStop()
+    if (Cmd == CMD_CHGGROUP) CmdChangeRadioGroup(ON, CmdValue)
+
+})
+
+
+basic.forever(function () {
+    if (MotorOffTime != 0) {
+        if ((MotorOffTime <= input.runningTime())) {
+            CmdForward(OFF, 0, 0, 0)
+        }
+    }
+    if (RGrpEndTime != 0) {
+        if (RGrpEndTime <= input.runningTime()) {
+            CmdChangeRadioGroup(OFF, INIT_GROUP)
+        }
+    }
+    radio.sendValue(MSG_DIST, RobotImp.GetDistance())
+    radio.sendValue(MSG_LINESENSORS, RobotImp.LineSensorStatus())
+    basic.pause(10)
+})
