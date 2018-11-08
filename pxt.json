@@ -1,18 +1,18 @@
 {
-    "name": "RobotRemote",
-    "version": "0.0.1",
-    "description": "Zdalne sterowanie robotem",
-    "license": "MIT",
+    "name": "pxt-robot1",
+    "version": "0.0.20",
+    "description": "",
     "dependencies": {
-        "core": "*"
+        "core": "*",
+        "radio": "*"
     },
     "files": [
         "README.md",
-        "main.ts",
-        "custom.ts"
+        "main.ts"
     ],
     "testFiles": [
         "test.ts"
     ],
-    "public": true
+    "public": false,
+    "installedVersion": "workspace:118e82f4-bfaf-4900-7764-3accf69b8c0c"
 }
